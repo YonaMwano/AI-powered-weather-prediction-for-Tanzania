@@ -1,0 +1,10 @@
+{
+  "name": "Anga — AI Weather Tanzania",
+  "short_name": "Anga",
+  "description": "Weather prediction powered by AI for Tanzania",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F8FA",
+  "theme_color": "#4B3FA8",
+  "icons": []
+}
