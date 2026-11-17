@@ -45,12 +45,12 @@ html {
 body {
   background-color: var(--bg);
   color: var(--ink);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Leaflet overrides */
+/* Leaflet */
 .leaflet-container {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
@@ -58,11 +58,16 @@ body {
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12) !important;
+  padding: 0;
 }
 
-/* Shimmer for AI loading */
+.leaflet-popup-content {
+  margin: 10px 12px !important;
+}
+
+/* AI shimmer */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -72,14 +77,13 @@ body {
   background: linear-gradient(
     90deg,
     var(--surface) 0%,
-    color-mix(in srgb, var(--brand) 12%, var(--surface)) 50%,
+    color-mix(in srgb, var(--brand) 14%, var(--surface)) 50%,
     var(--surface) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
-/* Prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .ai-shimmer {
     animation: none;
@@ -92,8 +96,8 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -101,4 +105,15 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 999px;
+}
+
+/* Card polish */
+.card {
+  @apply rounded-lg border border-border bg-surface shadow-soft;
+}
+
+/* Focus rings */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }

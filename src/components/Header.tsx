@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Globe, Bell, Search } from "lucide-react";
+import { ChevronDown, Globe, Bell, Search, Moon, Sun } from "lucide-react";
 import { useApp } from "./Providers";
 import { REGIONS, searchRegions } from "@/lib/regions";
 import { Region } from "@/types/weather";
 import { cn } from "@/lib/utils";
 
 export function Header({ alertCount = 0 }: { alertCount?: number }) {
-  const { lang, setLang, region, setRegion } = useApp();
+  const { lang, setLang, region, setRegion, theme, setTheme } = useApp();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -83,6 +83,13 @@ export function Header({ alertCount = 0 }: { alertCount?: number }) {
         </div>
 
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-2 transition hover:bg-bg hover:text-ink"
+            aria-label="Toggle dark mode"
+          >
+            {theme === "dark" ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
+          </button>
           <button
             onClick={() => setLang(lang === "en" ? "sw" : "en")}
             className="flex h-10 min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-sm font-medium text-ink-2 transition hover:bg-bg hover:text-ink"
