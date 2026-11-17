@@ -22,7 +22,7 @@ export default function MapPage() {
       <Header />
       <div className="relative h-[calc(100vh-4rem)] w-full">
         <MapView />
-        <div className="absolute left-4 top-4 z-[1000] rounded-lg border border-border bg-surface/95 px-3 py-2 text-sm shadow-soft backdrop-blur">
+        <div className="absolute right-4 top-4 z-[1000] rounded-lg border border-border bg-surface/95 px-3 py-2 text-sm shadow-soft backdrop-blur">
           {lang === "sw" ? "Ramani ya Tanzania" : "Tanzania Weather Map"}
         </div>
       </div>

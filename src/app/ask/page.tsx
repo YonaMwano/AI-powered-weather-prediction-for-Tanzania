@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { MarkdownText } from "@/components/MarkdownText";
 import { Header } from "@/components/Header";
 import { useApp } from "@/components/Providers";
 import { Send, Sparkles, Loader2 } from "lucide-react";
@@ -62,6 +63,7 @@ export default function AskPage() {
           history: messages.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
+      if (!res.ok) throw new Error("Chat request failed");
       const data = await res.json();
       setMessages((m) => [
         ...m,
@@ -138,7 +140,7 @@ export default function AskPage() {
                     : "border border-border bg-surface"
                 )}
               >
-                <p className="whitespace-pre-wrap">{m.content}</p>
+                {m.role === "assistant" ? <MarkdownText>{m.content}</MarkdownText> : <p className="whitespace-pre-wrap">{m.content}</p>}
                 {m.sources && m.sources.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {m.sources.map((s) => (

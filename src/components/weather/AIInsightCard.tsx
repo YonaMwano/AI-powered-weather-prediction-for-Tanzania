@@ -1,5 +1,6 @@
 "use client";
 
+import { MarkdownText } from "@/components/MarkdownText";
 import { useState } from "react";
 import { AIInsight } from "@/types/weather";
 import { Sparkles, ChevronDown, MessageCircle } from "lucide-react";
@@ -50,7 +51,7 @@ export function AIInsightCard({
         </span>
       </div>
 
-      <p className="text-base leading-relaxed text-ink">{insight.text}</p>
+      <div className="text-base leading-relaxed text-ink"><MarkdownText>{insight.text}</MarkdownText></div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span

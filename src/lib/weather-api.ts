@@ -27,7 +27,7 @@ function wmoToCondition(code: number): string {
   return "Unknown";
 }
 
-export async function fetchOpenMeteo(region: Region): Promise<{
+export async function fetchOpenMeteo(region: Region, fresh = false): Promise<{
   current: Partial<CurrentWeather>;
   hourly: HourlyForecast[];
   daily: DailyForecast[];
@@ -52,7 +52,8 @@ export async function fetchOpenMeteo(region: Region): Promise<{
   url.searchParams.set("forecast_hours", "24");
 
   const res = await fetch(url.toString(), {
-    next: { revalidate: 900 }, // 15 min
+    ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: 900 } }),
+    signal: AbortSignal.timeout(10000),
   });
 
   if (!res.ok) throw new Error(`Open-Meteo error: ${res.status}`);
@@ -68,12 +69,12 @@ export async function fetchOpenMeteo(region: Region): Promise<{
     condition: wmoToCondition(data.current.weather_code),
     conditionCode: data.current.weather_code,
     isDay: data.current.is_day === 1,
-    updatedAt: data.current.time,
+    updatedAt: `${data.current.time}+03:00`,
     source: "Open-Meteo",
   };
 
   const hourly: HourlyForecast[] = (data.hourly.time || []).slice(0, 24).map((t: string, i: number) => ({
-    time: t,
+    time: `${t}+03:00`,
     temp: data.hourly.temperature_2m[i],
     feelsLike: data.hourly.apparent_temperature?.[i],
     precipitation: data.hourly.precipitation[i],
@@ -103,12 +104,12 @@ export async function fetchOpenMeteo(region: Region): Promise<{
   return { current, hourly, daily };
 }
 
-export async function fetchOpenWeatherCurrent(region: Region): Promise<Partial<CurrentWeather> & { alerts?: Alert[] }> {
+export async function fetchOpenWeatherCurrent(region: Region, fresh = false): Promise<Partial<CurrentWeather> & { alerts?: Alert[] }> {
   const key = getOWKey();
   if (!key) return {};
 
   const url = `${OPENWEATHER_BASE}/weather?lat=${region.lat}&lon=${region.lng}&appid=${key}&units=metric`;
-  const res = await fetch(url, { next: { revalidate: 600 } });
+  const res = await fetch(url, { ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: 600 } }), signal: AbortSignal.timeout(8000) });
   if (!res.ok) return {};
 
   const data = await res.json();
@@ -116,7 +117,7 @@ export async function fetchOpenWeatherCurrent(region: Region): Promise<Partial<C
   const alertsUrl = `${OPENWEATHER_BASE}/onecall?lat=${region.lat}&lon=${region.lng}&exclude=minutely,hourly,daily&appid=${key}&units=metric`;
   let alerts: Alert[] = [];
   try {
-    const aRes = await fetch(alertsUrl, { next: { revalidate: 600 } });
+    const aRes = await fetch(alertsUrl, { ...(fresh ? { cache: "no-store" as const } : { next: { revalidate: 600 } }), signal: AbortSignal.timeout(8000) });
     if (aRes.ok) {
       const aData = await aRes.json();
       if (aData.alerts) {
@@ -141,7 +142,7 @@ export async function fetchOpenWeatherCurrent(region: Region): Promise<Partial<C
     temp: data.main?.temp,
     feelsLike: data.main?.feels_like,
     humidity: data.main?.humidity,
-    windSpeed: data.wind?.speed ? data.wind.speed * 3.6 : undefined, // m/s to km/h
+    windSpeed: data.wind?.speed != null ? data.wind.speed * 3.6 : undefined, // m/s to km/h
     windDir: data.wind?.deg?.toString(),
     condition: data.weather?.[0]?.main || "Unknown",
     conditionCode: data.weather?.[0]?.id || 0,
@@ -180,48 +181,55 @@ export async function fetchWeatherAPIHistory(region: Region): Promise<HistoryMon
   }
 }
 
-export async function getUnifiedWeather(slugOrId: string): Promise<UnifiedWeather | null> {
+export async function getUnifiedWeather(slugOrId: string, fresh = false): Promise<UnifiedWeather | null> {
   const region = getRegionBySlug(slugOrId) || REGIONS.find((r) => r.id === slugOrId);
   if (!region) return null;
 
   try {
-    const [om, ow] = await Promise.all([
-      fetchOpenMeteo(region),
-      fetchOpenWeatherCurrent(region),
+    const [omResult, owResult] = await Promise.allSettled([
+      fetchOpenMeteo(region, fresh),
+      fetchOpenWeatherCurrent(region, fresh),
     ]);
+    const om = omResult.status === "fulfilled" ? omResult.value : null;
+    const ow = owResult.status === "fulfilled" ? owResult.value : {};
+    if (!Number.isFinite(ow.temp) && !Number.isFinite(om?.current.temp)) return null;
 
+    // Reject incomplete observations rather than substituting invented conditions.
+    for (const field of ["temp", "feelsLike", "humidity", "windSpeed"] as const) {
+      if (!Number.isFinite(ow[field] ?? om?.current[field])) return null;
+    }
     const current: CurrentWeather = {
-      temp: ow.temp ?? om.current.temp ?? 25,
-      feelsLike: ow.feelsLike ?? om.current.feelsLike ?? 25,
-      humidity: ow.humidity ?? om.current.humidity ?? 60,
-      windSpeed: ow.windSpeed ?? om.current.windSpeed ?? 10,
-      windDir: ow.windDir ?? om.current.windDir ?? "N",
-      condition: ow.condition ?? om.current.condition ?? "Clear",
-      conditionCode: ow.conditionCode ?? om.current.conditionCode ?? 0,
+      temp: (ow.temp ?? om?.current.temp)!,
+      feelsLike: (ow.feelsLike ?? om?.current.feelsLike)!,
+      humidity: (ow.humidity ?? om?.current.humidity)!,
+      windSpeed: (ow.windSpeed ?? om?.current.windSpeed)!,
+      windDir: ow.windDir ?? om?.current.windDir ?? "N",
+      condition: ow.condition ?? om?.current.condition ?? "Unavailable",
+      conditionCode: ow.conditionCode ?? om?.current.conditionCode ?? 0,
       icon: "",
       pressure: ow.pressure,
       visibility: ow.visibility,
-      isDay: ow.isDay ?? om.current.isDay ?? true,
-      updatedAt: ow.updatedAt ?? om.current.updatedAt ?? new Date().toISOString(),
-      source: [ow.source, om.current.source].filter(Boolean).join(" + ") || "Open-Meteo",
+      isDay: ow.isDay ?? om?.current.isDay ?? true,
+      updatedAt: ow.updatedAt ?? om?.current.updatedAt ?? new Date().toISOString(),
+      source: [ow.source, om?.current.source].filter(Boolean).join(" + ") || "Open-Meteo",
     };
 
     const sources = Array.from(
-      new Set(["Open-Meteo", ow.source ? "OpenWeather" : null].filter(Boolean) as string[])
+      new Set([om ? "Open-Meteo" : null, ow.source ? "OpenWeather" : null].filter(Boolean) as string[])
     );
 
     return {
       region,
       current,
-      hourly: om.hourly,
-      daily: om.daily,
+      hourly: om?.hourly || [],
+      daily: om?.daily || [],
       alerts: ow.alerts || [],
       history: [],
       sources,
       fetchedAt: new Date().toISOString(),
     };
   } catch (e) {
-    console.error("Unified weather fetch failed", e);
+    console.error("Weather providers unavailable");
     return null;
   }
 }

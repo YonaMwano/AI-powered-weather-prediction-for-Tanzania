@@ -27,7 +27,7 @@ function FitBounds() {
 }
 
 export default function MapView() {
-  const { region, setRegion, lang, theme } = useApp();
+  const { setRegion, lang } = useApp();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -35,16 +35,6 @@ export default function MapView() {
   }, []);
 
   if (!mounted) return null;
-
-  // Carto dark / light tiles. Token can be used for higher rate limits / proprietary styles.
-  const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY || "";
-  const isDark = theme === "dark";
-
-  // High-quality Carto basemaps (key improves quotas when present)
-  const base = isDark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-  const tileUrl = cartoKey ? `${base}?api_key=${cartoKey}` : base;
 
   return (
     <MapContainer
@@ -61,9 +51,8 @@ export default function MapView() {
       zoomControl={true}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        url={tileUrl}
-        subdomains="abcd"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
       />
       <FitBounds />
